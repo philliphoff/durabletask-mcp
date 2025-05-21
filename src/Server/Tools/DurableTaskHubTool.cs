@@ -12,6 +12,8 @@ public sealed record TaskHubOrchestration
     public required string InstanceId { get; init; }
 
     public required string Name { get; init; }
+
+    public required string Status { get; init; }
 }
 
 public sealed record TaskHubOrchestrationCreationResult
@@ -50,7 +52,7 @@ public static class DurableTaskHubTool
     public static async Task<TaskHubOrchestration[]> GetOrchestrationsForTaskHub(
         [Description("The name of the task hub to query for orchestrations.")] string taskHubName,
         [Description("The endpoint of the scheduler for the task hub.")] Uri schedulerEndpoint)
-    {       
+    {
         var client = CreateTaskHubClient(taskHubName, schedulerEndpoint);
 
         List<TaskHubOrchestration> orchestrations = new();
@@ -64,6 +66,7 @@ public static class DurableTaskHubTool
                 {
                     InstanceId = instance.InstanceId,
                     Name = instance.Name,
+                    Status = GetOrchestrationStatus(instance.RuntimeStatus)
                 });
         }
 
@@ -72,7 +75,7 @@ public static class DurableTaskHubTool
 
     static DurableTaskClient CreateTaskHubClient(string taskHubName, Uri schedulerEndpoint)
     {
-                var services = new ServiceCollection();
+        var services = new ServiceCollection();
 
         services.AddLogging(_ => { });
 
@@ -83,5 +86,21 @@ public static class DurableTaskHubTool
         using var serviceProvider = services.BuildServiceProvider();
 
         return builder.Build(serviceProvider);
+    }
+    
+    static string GetOrchestrationStatus(OrchestrationRuntimeStatus status)
+    {
+        return status switch
+        {
+            OrchestrationRuntimeStatus.Canceled => "Canceled",
+            OrchestrationRuntimeStatus.Completed => "Completed",
+            OrchestrationRuntimeStatus.ContinuedAsNew => "ContinuedAsNew",
+            OrchestrationRuntimeStatus.Failed => "Failed",
+            OrchestrationRuntimeStatus.Pending => "Pending",
+            OrchestrationRuntimeStatus.Running => "Running",
+            OrchestrationRuntimeStatus.Suspended => "Suspended",
+            OrchestrationRuntimeStatus.Terminated => "Terminated",
+            _ => "Unknown"
+        };
     }
 }
