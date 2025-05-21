@@ -64,6 +64,48 @@ public static class DurableTaskHubTool
         await Task.WhenAll(tasks);
     }
 
+    [McpServerTool, Description("Resume orchestrations in a Durable Task Scheduler Task Hub.")]
+    public static async Task ResumeOrchestrationsForTaskHub(
+        [Description("The name of the task hub to query for orchestrations.")] string taskHubName,
+        [Description("The endpoint of the scheduler for the task hub.")] Uri schedulerEndpoint,
+        [Description("The instance IDs of the orchestrations to resume.")] string[] instanceIds,
+        CancellationToken cancellationToken)
+    {
+        var client = CreateTaskHubClient(taskHubName, schedulerEndpoint);
+
+        var tasks = instanceIds.Select(id => client.ResumeInstanceAsync(id, cancellation: cancellationToken)).ToList();
+
+        await Task.WhenAll(tasks);
+    }
+
+    [McpServerTool, Description("Suspend orchestrations in a Durable Task Scheduler Task Hub.")]
+    public static async Task SuspendOrchestrationsForTaskHub(
+        [Description("The name of the task hub to query for orchestrations.")] string taskHubName,
+        [Description("The endpoint of the scheduler for the task hub.")] Uri schedulerEndpoint,
+        [Description("The instance IDs of the orchestrations to suspend.")] string[] instanceIds,
+        CancellationToken cancellationToken)
+    {
+        var client = CreateTaskHubClient(taskHubName, schedulerEndpoint);
+
+        var tasks = instanceIds.Select(id => client.SuspendInstanceAsync(id, cancellation: cancellationToken)).ToList();
+
+        await Task.WhenAll(tasks);
+    }
+
+    [McpServerTool, Description("Terminate orchestrations in a Durable Task Scheduler Task Hub.")]
+    public static async Task TerminateOrchestrationsForTaskHub(
+        [Description("The name of the task hub to query for orchestrations.")] string taskHubName,
+        [Description("The endpoint of the scheduler for the task hub.")] Uri schedulerEndpoint,
+        [Description("The instance IDs of the orchestrations to terminate.")] string[] instanceIds,
+        CancellationToken cancellationToken)
+    {
+        var client = CreateTaskHubClient(taskHubName, schedulerEndpoint);
+
+        var tasks = instanceIds.Select(id => client.TerminateInstanceAsync(id, cancellation: cancellationToken)).ToList();
+
+        await Task.WhenAll(tasks);
+    }
+
     [McpServerTool, Description("List orchestrations in a Durable Task Scheduler Task Hub.")]
     public static async Task<TaskHubOrchestration[]> GetOrchestrationsForTaskHub(
         [Description("The name of the task hub to query for orchestrations.")] string taskHubName,
