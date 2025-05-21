@@ -1,4 +1,7 @@
 using System.ComponentModel;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using DurableTask.Core;
 using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Client.AzureManaged;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,25 +14,44 @@ public sealed record TaskHubOrchestration
     public required string Name { get; init; }
 }
 
+public sealed record TaskHubOrchestrationCreationResult
+{
+    public required string InstanceId { get; init; }
+}
+
 [McpServerToolType]
 public static class DurableTaskHubTool
 {
+    [McpServerTool, Description("Create an orchestration in a Durable Task Hubs in a Durable Task Scheduler.")]
+    public static async Task<TaskHubOrchestrationCreationResult> CreateOrchestration(
+        [Description("The name of the task hub to create the orchestration in.")] string taskHubName,
+        [Description("The endpoint of the scheduler for the task hub.")] Uri schedulerEndpoint,
+        [Description("The name of the orchestration to create.")] string orchestrationName,
+        [Description("The optional input to the orchestration, in JSON format.")] string? input = null)
+    {
+        var client = CreateTaskHubClient(taskHubName, schedulerEndpoint);
+
+        object? inputObject = null;
+
+        if (input is not null)
+        {
+            inputObject = JsonValue.Parse(input) ?? "null";
+        }
+
+        var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(orchestrationName, inputObject);
+
+        return new()
+        {
+            InstanceId = instanceId,
+        };
+    }
+
     [McpServerTool, Description("List orchestrations in a Durable Task Scheduler Task Hub.")]
     public static async Task<TaskHubOrchestration[]> GetOrchestrationsForTaskHub(
         [Description("The name of the task hub to query for orchestrations.")] string taskHubName,
         [Description("The endpoint of the scheduler for the task hub.")] Uri schedulerEndpoint)
-    {
-        var services = new ServiceCollection();
-
-        services.AddLogging(_ => { });
-
-        var builder = new DefaultDurableTaskClientBuilder("client", services);
-
-        builder.UseDurableTaskScheduler($"Endpoint={schedulerEndpoint};TaskHub={taskHubName};Authentication=DefaultAzure");
-
-        using var serviceProvider = services.BuildServiceProvider();
-
-        var client = builder.Build(serviceProvider);
+    {       
+        var client = CreateTaskHubClient(taskHubName, schedulerEndpoint);
 
         List<TaskHubOrchestration> orchestrations = new();
 
@@ -46,5 +68,20 @@ public static class DurableTaskHubTool
         }
 
         return orchestrations.ToArray();
+    }
+
+    static DurableTaskClient CreateTaskHubClient(string taskHubName, Uri schedulerEndpoint)
+    {
+                var services = new ServiceCollection();
+
+        services.AddLogging(_ => { });
+
+        var builder = new DefaultDurableTaskClientBuilder("client", services);
+
+        builder.UseDurableTaskScheduler($"Endpoint={schedulerEndpoint};TaskHub={taskHubName};Authentication=DefaultAzure");
+
+        using var serviceProvider = services.BuildServiceProvider();
+
+        return builder.Build(serviceProvider);
     }
 }
