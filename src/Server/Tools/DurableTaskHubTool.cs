@@ -9,6 +9,8 @@ using ModelContextProtocol.Server;
 
 public sealed record TaskHubOrchestration
 {
+    public DateTimeOffset CreatedAt { get; init; }
+
     public required string InstanceId { get; init; }
 
     public required string Name { get; init; }
@@ -48,6 +50,20 @@ public static class DurableTaskHubTool
         };
     }
 
+    [McpServerTool, Description("Delete orchestrations in a Durable Task Scheduler Task Hub.")]
+    public static async Task DeleteOrchestrationsForTaskHub(
+        [Description("The name of the task hub to query for orchestrations.")] string taskHubName,
+        [Description("The endpoint of the scheduler for the task hub.")] Uri schedulerEndpoint,
+        [Description("The instance IDs of the orchestrations to delete.")] string[] instanceIds,
+        CancellationToken cancellationToken)
+    {
+        var client = CreateTaskHubClient(taskHubName, schedulerEndpoint);
+
+        var tasks = instanceIds.Select(id => client.PurgeInstanceAsync(id, cancellation: cancellationToken)).ToList();
+
+        await Task.WhenAll(tasks);
+    }
+
     [McpServerTool, Description("List orchestrations in a Durable Task Scheduler Task Hub.")]
     public static async Task<TaskHubOrchestration[]> GetOrchestrationsForTaskHub(
         [Description("The name of the task hub to query for orchestrations.")] string taskHubName,
@@ -64,6 +80,7 @@ public static class DurableTaskHubTool
             orchestrations.Add(
                 new()
                 {
+                    CreatedAt = instance.CreatedAt,
                     InstanceId = instance.InstanceId,
                     Name = instance.Name,
                     Status = GetOrchestrationStatus(instance.RuntimeStatus)
