@@ -5,6 +5,7 @@ using Azure.ResourceManager;
 using Azure.ResourceManager.DurableTask;
 using Azure.ResourceManager.Resources;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
 namespace DurableTask.Mcp.Tools;
@@ -34,32 +35,44 @@ public static class AzureDurableTaskSchedulerTool
 {
     [McpServerTool, Description("List all Durable Task Schedulers in Azure.")]
     public static async Task<AzureDurableTaskScheduler[]> GetSchedulersForSubscription(
-        [Description("The ID of the subscription to query for schedulers.")] string subscriptionId)
+        [Description("The ID of the subscription to query for schedulers.")] string subscriptionId,
+        ILoggerFactory loggerFactory)
     {
-        ArmClient armClient = new ArmClient(new DefaultAzureCredential());
+        ILogger logger = loggerFactory.CreateLogger("AzureDurableTaskSchedulerTool");
 
-        SubscriptionResource defaultSubscription = armClient.GetSubscriptionResource(SubscriptionResource.CreateResourceIdentifier(subscriptionId));
-
-        List<AzureDurableTaskScheduler> schedulers = new List<AzureDurableTaskScheduler>();
-
-        await foreach (DurableTaskSchedulerResource resource in defaultSubscription.GetDurableTaskSchedulersAsync())
+        try
         {
-            schedulers.Add(
-                new AzureDurableTaskScheduler
-                {
-                    Endpoint = new Uri(resource.Data.Properties.Endpoint),
-                    Name = resource.Data.Name,
-                    ResourceGroupName = resource.Id.ResourceGroupName!,
-                    SubscriptionId = resource.Id.SubscriptionId!,
-                    TaskHubs =
-                        resource.GetDurableTaskHubs().Select(hub => new AzureDurableTaskHub
-                        {
-                            Name = hub.Data.Name,
-                            DashboardEndpoint = hub.Data.Properties.DashboardUri,
-                        }).ToArray(),
-                });
-        }
+            ArmClient armClient = new ArmClient(new DefaultAzureCredential());
 
-        return schedulers.ToArray();
+            SubscriptionResource defaultSubscription = armClient.GetSubscriptionResource(SubscriptionResource.CreateResourceIdentifier(subscriptionId));
+
+            List<AzureDurableTaskScheduler> schedulers = new List<AzureDurableTaskScheduler>();
+
+            await foreach (DurableTaskSchedulerResource resource in defaultSubscription.GetDurableTaskSchedulersAsync())
+            {
+                schedulers.Add(
+                    new AzureDurableTaskScheduler
+                    {
+                        Endpoint = new Uri(resource.Data.Properties.Endpoint),
+                        Name = resource.Data.Name,
+                        ResourceGroupName = resource.Id.ResourceGroupName!,
+                        SubscriptionId = resource.Id.SubscriptionId!,
+                        TaskHubs =
+                            resource.GetDurableTaskHubs().Select(hub => new AzureDurableTaskHub
+                            {
+                                Name = hub.Data.Name,
+                                DashboardEndpoint = hub.Data.Properties.DashboardUri,
+                            }).ToArray(),
+                    });
+            }
+
+            return schedulers.ToArray();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get schedulers for subscription {SubscriptionId}", subscriptionId);
+
+            throw;
+        }
     }
 }
