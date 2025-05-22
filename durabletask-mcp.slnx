@@ -1,3 +1,5 @@
 <Solution>
   <Project Path="src/Server/Server.csproj" />
+
+  <Project Path="samples/OrchestrationWorker/OrchestrationWorker.csproj" />
 </Solution>
