@@ -118,9 +118,9 @@ public static class DurableTaskHubTool
     [McpServerTool, Description("List orchestrations in a Durable Task Scheduler Task Hub.")]
     public static async Task<TaskHubOrchestration[]> GetOrchestrationsForTaskHub(
         [Description("The name of the task hub to query for orchestrations.")] string taskHubName,
-        [Description("The endpoint of the scheduler for the task hub.")] Uri schedulerEndpoint)
+        [Description("The endpoint of the scheduler for the task hub.")] string schedulerEndpoint)
     {
-        var client = CreateTaskHubClient(taskHubName, schedulerEndpoint);
+        var client = CreateTaskHubClient(taskHubName, new Uri(schedulerEndpoint));
 
         List<TaskHubOrchestration> orchestrations = new();
 
