@@ -7,9 +7,18 @@ using Microsoft.DurableTask.Client.AzureManaged;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Server;
 
+public sealed record FailureDetails
+{
+    public required string ErrorMessage { get; init; }
+
+    public string? StackTrace { get; init; }
+}
+
 public sealed record TaskHubOrchestration
 {
     public DateTimeOffset CreatedAt { get; init; }
+
+    public FailureDetails? FailureDetails { get; init; }
 
     public required string InstanceId { get; init; }
 
@@ -115,7 +124,7 @@ public static class DurableTaskHubTool
 
         List<TaskHubOrchestration> orchestrations = new();
 
-        var instances = client.GetAllInstancesAsync();
+        var instances = client.GetAllInstancesAsync(new() { FetchInputsAndOutputs = true});
 
         await foreach (var instance in instances)
         {
@@ -123,6 +132,13 @@ public static class DurableTaskHubTool
                 new()
                 {
                     CreatedAt = instance.CreatedAt,
+                    FailureDetails = instance.FailureDetails is not null
+                        ? new FailureDetails
+                        {
+                            ErrorMessage = instance.FailureDetails.ErrorMessage,
+                            StackTrace = instance.FailureDetails.StackTrace
+                        }
+                        : null,
                     InstanceId = instance.InstanceId,
                     Name = instance.Name,
                     Status = GetOrchestrationStatus(instance.RuntimeStatus)
