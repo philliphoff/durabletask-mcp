@@ -1,0 +1,9 @@
+{
+    "servers": {
+        "durabletask-mcp-server": {
+            "type": "stdio",
+            "command": "dotnet",
+            "args": [ "run", "--project", "${workspaceFolder}/src/Server/Server.csproj"]
+        }
+    }
+}
